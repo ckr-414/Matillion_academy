@@ -8,6 +8,7 @@ pipeline:
         unconditional:
         - "Query Result To Grid"
         - "Python Pushdown"
+        - "SNS Message"
       parameters:
         componentName: "Begin"
     Query Result To Grid:
@@ -70,6 +71,16 @@ pipeline:
         scriptTimeout: "360"
       postProcessing:
         updateScalarVariables:
+    SNS Message:
+      type: "sns-message"
+      parameters:
+        componentName: "SNS Message"
+        awsRegion: "us-east-1"
+        topicName:
+        subject: "AWS Notification Message"
+        message:
+      postProcessing:
+        updateScalarVariables:
   variables:
     v_scalar_table:
       metadata:
@@ -115,3 +126,8 @@ design:
         x: 170
         "y": 100
       tempMetlId: 6
+    SNS Message:
+      position:
+        x: 160
+        "y": 210
+      tempMetlId: 7
