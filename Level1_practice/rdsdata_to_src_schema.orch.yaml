@@ -1,0 +1,143 @@
+type: "orchestration"
+version: "1.0"
+pipeline:
+  components:
+    Start:
+      type: "start"
+      transitions:
+        unconditional:
+        - "Database Query"
+        - "Creat table s3_src_customer_accounts"
+      parameters:
+        componentName: "Start"
+    Database Query:
+      type: "database-query"
+      parameters:
+        componentName: "Database Query"
+        basicAdvancedMode: "Advanced"
+        databaseType: "MariaDB"
+        connectionUrl: "jdbc:mariadb://mat-trn-src.co4vks4ks8wo.eu-west-1.rds.amazonaws.com:3306/greenwave"
+        username: "greenwave_user"
+        password: "rds_database_password"
+        connectionOptions:
+        sqlQuery: "SELECT * FROM customers;"
+        type: "Standard"
+        primaryKeys:
+        warehouse1: "[Environment Default]"
+        database: "[Environment Default]"
+        schema: "[Environment Default]"
+        targetTable: "rds_src_customers"
+        stage1: "[Custom]"
+        stagePlatform: "Snowflake Managed"
+        loadOptions:
+        sshTunnel:
+      postProcessing:
+        updateScalarVariables:
+    Creat table s3_src_customer_accounts:
+      type: "create-table"
+      transitions:
+        success:
+        - "S3 Load JSON - s3_src_customer_accounts"
+      parameters:
+        componentName: "Creat table s3_src_customer_accounts"
+        createReplace: "Create if not exists"
+        database: "[Environment Default]"
+        schema: "[Environment Default]"
+        newTableName: "s3_src_customer_accounts"
+        tableType: "Permanent"
+        columns:
+        - - "datavalue"
+          - "VARIANT"
+          - ""
+          - ""
+          - ""
+          - "No"
+          - "No"
+          - ""
+          - ""
+        defaultDdlCollation:
+        primaryKeys:
+        clusteringKeys:
+        dataRetentionTimeInDays:
+        comment:
+      postProcessing:
+        updateScalarVariables:
+    S3 Load JSON - s3_src_customer_accounts:
+      type: "s3-load"
+      parameters:
+        componentName: "S3 Load JSON - s3_src_customer_accounts"
+        stage: "[Custom]"
+        authentication: "Credentials"
+        s3ObjectPrefix: "s3://public-online-mtln-training-s3-greenwave/"
+        pattern: "customer_accounts.json"
+        encryption: "None"
+        warehouse: "[Environment Default]"
+        database: "[Environment Default]"
+        schema: "[Environment Default]"
+        targetTable: "s3_src_customer_accounts"
+        loadColumns:
+        - "datavalue"
+        format: "[Custom]"
+        fileType: "JSON"
+        compression: "AUTO"
+        enableOctal: "False"
+        allowDuplicates: "False"
+        stripOuterArray: "False"
+        stripNullValues: "False"
+        ignoreUtf8Errors: "False"
+        nullIf1:
+        trimSpace1: "False"
+        onError: "Abort Statement"
+        sizeLimitB:
+        purgeFiles: "False"
+        matchByColumnName: "None"
+        truncateColumns: "False"
+        forceLoad: "False"
+      postProcessing:
+        updateScalarVariables:
+design:
+  components:
+    Start:
+      position:
+        x: 0
+        "y": 0
+      tempMetlId: 1
+    Database Query:
+      position:
+        x: 120
+        "y": 0
+      tempMetlId: 2
+    Creat table s3_src_customer_accounts:
+      position:
+        x: 110
+        "y": 110
+      tempMetlId: 3
+    S3 Load JSON - s3_src_customer_accounts:
+      position:
+        x: 230
+        "y": 110
+      tempMetlId: 4
+  notes:
+    "1":
+      position:
+        x: 10
+        "y": -130
+      size:
+        height: 108
+        width: 300
+      theme: "white"
+      content: |-
+        Coping the customers data from Mariadb to snowflake.
+
+        Once already loaded when ran again no data loaded.
+    "2":
+      position:
+        x: 40
+        "y": 210
+      size:
+        height: 108
+        width: 300
+      theme: "white"
+      content: |-
+        Create a table to load data from JSON file with table action REPLACE.
+        and loading data from S3 JSON file to s3_src_customer_accounts table
