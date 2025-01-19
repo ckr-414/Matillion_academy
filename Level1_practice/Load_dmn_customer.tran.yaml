@@ -1,0 +1,186 @@
+type: "transformation"
+version: "1.0"
+pipeline:
+  components:
+    rds_src_customers:
+      type: "table-input"
+      parameters:
+        componentName: "rds_src_customers"
+        database: "[Environment Default]"
+        schema: "[Environment Default]"
+        targetTable: "rds_src_customers"
+        columnNames:
+        - "rid"
+        - "first_name"
+        - "last_name"
+        timeOffset:
+    s3_src_customer_Accounts:
+      type: "table-input"
+      parameters:
+        componentName: "s3_src_customer_Accounts"
+        database: "[Environment Default]"
+        schema: "[Environment Default]"
+        targetTable: "s3_src_customer_accounts"
+        columnNames:
+        - "datavalue"
+        timeOffset:
+    Extract Nested Data:
+      type: "extract-nested-data-sf"
+      sources:
+      - "s3_src_customer_Accounts"
+      parameters:
+        componentName: "Extract Nested Data"
+        includeInputColumns: "No"
+        columns:
+        - name: "data"
+          datatype: "VARIANT"
+          size: "0"
+          decimalPlaces: "0"
+          columnName: "datavalue"
+          aliasName: "data_Array"
+          isArray: "true"
+          include: "false"
+          childElements:
+          - name: "data-element"
+            datatype: "VARIANT"
+            size: "0"
+            decimalPlaces: "0"
+            columnName: "datavalue"
+            aliasName: "data-element"
+            isArray: "false"
+            include: "false"
+            childElements:
+            - name: "customer_rid"
+              datatype: "NUMBER"
+              size: "0"
+              decimalPlaces: "0"
+              columnName: "datavalue"
+              aliasName: "customer_rid"
+              isArray: "false"
+              include: "true"
+            - name: "account_name"
+              datatype: "VARCHAR"
+              size: "0"
+              decimalPlaces: "0"
+              columnName: "datavalue"
+              aliasName: "account_name"
+              isArray: "false"
+              include: "true"
+        outerJoin: "No"
+        inputAlias: "i"
+        arrayPrefix: "f"
+        castingMethod: "Fail on invalid data"
+        caseColumnAliasNames: "No"
+    Join:
+      type: "join"
+      sources:
+      - "rds_src_customers"
+      - "Extract Nested Data"
+      parameters:
+        componentName: "Join"
+        mainTable: "rds_src_customers"
+        mainTableAlias: "customer"
+        joins:
+        - - "Extract Nested Data"
+          - "account"
+          - "Left"
+        joinExpressions:
+        - - "\"customer\".\"rid\"=\"account\".\"customer_rid\""
+          - "customer_Left_account"
+        columnMappings:
+        - - "customer.rid"
+          - "customer_rid"
+        - - "customer.first_name"
+          - "first_name"
+        - - "customer.last_name"
+          - "last_name"
+        - - "account.account_name"
+          - "account_name"
+    dmn_customer:
+      type: "rewrite-table"
+      sources:
+      - "Join"
+      parameters:
+        componentName: "dmn_customer"
+        warehouse: "[Environment Default]"
+        database: "[Environment Default]"
+        schema: "DB_DWH"
+        targetTable: "dmn_customer"
+        orderBy:
+      postProcessing:
+        updateScalarVariables:
+    Create View:
+      type: "create-view"
+      sources:
+      - "Filter"
+      parameters:
+        componentName: "Create View"
+        database: "[Environment Default]"
+        schema: "DB_DWH"
+        viewName: "dmn_customer_us"
+        secureView: "No"
+        viewType: "Standard"
+      postProcessing:
+        updateScalarVariables:
+    Filter:
+      type: "filter"
+      sources:
+      - "Join"
+      parameters:
+        componentName: "Filter"
+        filterConditions:
+        - - "account_name"
+          - "Is"
+          - "Like"
+          - "%US%"
+        combineCondition: "Or"
+design:
+  components:
+    rds_src_customers:
+      position:
+        x: 10
+        "y": -10
+      tempMetlId: 1
+    s3_src_customer_Accounts:
+      position:
+        x: 10
+        "y": 100
+      tempMetlId: 2
+    Extract Nested Data:
+      position:
+        x: 130
+        "y": 100
+      tempMetlId: 3
+    Join:
+      position:
+        x: 260
+        "y": -10
+      tempMetlId: 4
+    dmn_customer:
+      position:
+        x: 380
+        "y": -10
+      tempMetlId: 5
+    Create View:
+      position:
+        x: 470
+        "y": 110
+      tempMetlId: 6
+    Filter:
+      position:
+        x: 340
+        "y": 110
+      tempMetlId: 7
+  notes:
+    "1":
+      position:
+        x: -370
+        "y": -30
+      size:
+        height: 198
+        width: 300
+      theme: "white"
+      content: |-
+        In this job we are reading the rds_src_customers and customers account list using the table input component.
+        as json data available from s3 we have extracted and join the data to combine the tables.
+        After combining the data it loaded into the dmn_customer table and dmn_customer_view

@@ -120,22 +120,22 @@ design:
   notes:
     "1":
       position:
-        x: 10
-        "y": -130
+        x: 250
+        "y": -70
       size:
-        height: 108
+        height: 148
         width: 300
       theme: "white"
       content: |-
         Coping the customers data from Mariadb to snowflake.
 
-        Once already loaded when ran again no data loaded.
+        In this when component runs every time table get create ot truncate and load the load.
     "2":
       position:
         x: 40
         "y": 210
       size:
-        height: 108
+        height: 128
         width: 300
       theme: "white"
       content: |-
