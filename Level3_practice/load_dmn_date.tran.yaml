@@ -1,0 +1,269 @@
+type: "transformation"
+version: "1.0"
+pipeline:
+  components:
+    Generate Sequence:
+      type: "generate-sequence"
+      parameters:
+        componentName: "Generate Sequence"
+        startValue: "1"
+        incrementValue: "1"
+        endValue: "${pip_max_records}"
+        outputColumn: "sequence"
+    Calculate Y M D:
+      type: "calculator"
+      sources:
+      - "Generate Sequence"
+      parameters:
+        componentName: "Calculate Y M D"
+        includeInputColumns: "Yes"
+        calculations:
+        - - "CAST(${pip_start_date} as date)"
+          - "starting_date"
+        - - "\"starting_date\" + \"sequence\""
+          - "calendar_date"
+        - - "DATE_PART(year,\"calendar_date\")"
+          - "calendar_year"
+        - - "DATE_PART(mm,\"calendar_date\")"
+          - "calendar_month"
+        - - "DATE_PART(week,\"calendar_date\")"
+          - "calendar_week"
+        - - "DATE_PART(day,\"calendar_date\")"
+          - "calendar_day"
+    Calculate relative fields:
+      type: "calculator"
+      sources:
+      - "Calculate Y M D"
+      parameters:
+        componentName: "Calculate relative fields"
+        includeInputColumns: "Yes"
+        calculations:
+        - - "DATEDIFF(years, CURRENT_DATE, \"calendar_date\")"
+          - "relative_year"
+        - - "DATEDIFF(months, CURRENT_DATE, \"calendar_date\")"
+          - "relative_month"
+        - - "DATEDIFF(days, CURRENT_DATE, \"calendar_date\")"
+          - "relative_day"
+    Add Month names:
+      type: "map-values"
+      sources:
+      - "Calculate relative fields"
+      parameters:
+        componentName: "Add Month names"
+        valueMap:
+        - - "calendar_month"
+          - "Is"
+          - "Equal to"
+          - "1"
+          - "January"
+        - - "calendar_month"
+          - "Is"
+          - "Equal to"
+          - "2"
+          - "February"
+        - - "calendar_month"
+          - "Is"
+          - "Equal to"
+          - "3"
+          - "March"
+        - - "calendar_month"
+          - "Is"
+          - "Equal to"
+          - "4"
+          - "April"
+        - - "calendar_month"
+          - "Is"
+          - "Equal to"
+          - "5"
+          - "May"
+        - - "calendar_month"
+          - "Is"
+          - "Equal to"
+          - "6"
+          - "June"
+        - - "calendar_month"
+          - "Is"
+          - "Equal to"
+          - "7"
+          - "July"
+        - - "calendar_month"
+          - "Is"
+          - "Equal to"
+          - "8"
+          - "August"
+        - - "calendar_month"
+          - "Is"
+          - "Equal to"
+          - "9"
+          - "September"
+        - - "calendar_month"
+          - "Is"
+          - "Equal to"
+          - "10"
+          - "October"
+        - - "calendar_month"
+          - "Is"
+          - "Equal to"
+          - "11"
+          - "November"
+        - - "calendar_month"
+          - "Is"
+          - "Equal to"
+          - "12"
+          - "December"
+        columnName: "month_name"
+        other: "null"
+    script_src_date_day_lookup:
+      type: "table-input"
+      parameters:
+        componentName: "script_src_date_day_lookup"
+        database: "[Environment Default]"
+        schema: "[Environment Default]"
+        targetTable: "script_src_date_day_lookup"
+        columnNames:
+        - "year"
+        - "sunday"
+        - "monday"
+        - "tuesday"
+        - "wednesday"
+        - "thursday"
+        - "friday"
+        - "saturday"
+        timeOffset:
+    Transpose Columns:
+      type: "transpose-columns"
+      sources:
+      - "script_src_date_day_lookup"
+      parameters:
+        componentName: "Transpose Columns"
+        ordinaryColumns:
+        - "year"
+        rowLabelName: "date_name"
+        outputColumns:
+        - - "date"
+          - "VARCHAR"
+        columnToRowMapping:
+        - - "Sunday"
+          - "sunday"
+        - - "Monday"
+          - "monday"
+        - - "Tuesday"
+          - "tuesday"
+        - - "Wednesday"
+          - "wednesday"
+        - - "Thursday"
+          - "thursday"
+        - - "Friday"
+          - "friday"
+        - - "Saturday"
+          - "saturday"
+    convert date:
+      type: "convert-type"
+      sources:
+      - "Transpose Columns"
+      parameters:
+        componentName: "convert date"
+        conversions:
+        - - "date"
+          - "DATE"
+          - ""
+          - ""
+    Join:
+      type: "join"
+      sources:
+      - "Add Month names"
+      - "convert date"
+      parameters:
+        componentName: "Join"
+        mainTable: "Add Month names"
+        mainTableAlias: "main"
+        joins:
+        - - "convert date"
+          - "days"
+          - "Left"
+        joinExpressions:
+        - - "\"main\".\"calendar_date\"=\"days\".\"date\""
+          - "main_Left_days"
+        columnMappings:
+        - - "main.sequence"
+          - "sequence"
+        - - "main.starting_date"
+          - "starting_date"
+        - - "main.calendar_date"
+          - "calendar_date"
+        - - "main.calendar_year"
+          - "calendar_year"
+        - - "main.calendar_month"
+          - "calendar_month"
+        - - "main.calendar_week"
+          - "calendar_week"
+        - - "main.calendar_day"
+          - "calendar_day"
+        - - "main.relative_year"
+          - "relative_year"
+        - - "main.relative_month"
+          - "relative_month"
+        - - "main.relative_day"
+          - "relative_day"
+        - - "main.month_name"
+          - "month_name"
+        - - "days.date_name"
+          - "day_name"
+  variables:
+    pip_start_date:
+      metadata:
+        type: "TEXT"
+        description: "First date of the dmn table"
+        scope: "SHARED"
+        visibility: "PRIVATE"
+      defaultValue: "'2020-01-01'"
+    pip_max_records:
+      metadata:
+        type: "NUMBER"
+        description: |
+          Total records for the generate sequenct component
+        scope: "SHARED"
+        visibility: "PRIVATE"
+      defaultValue: "3000"
+design:
+  components:
+    Generate Sequence:
+      position:
+        x: 190
+        "y": 70
+      tempMetlId: 1
+    Calculate Y M D:
+      position:
+        x: 320
+        "y": 70
+      tempMetlId: 2
+    Calculate relative fields:
+      position:
+        x: 450
+        "y": 70
+      tempMetlId: 3
+    Add Month names:
+      position:
+        x: 560
+        "y": 70
+      tempMetlId: 4
+    script_src_date_day_lookup:
+      position:
+        x: 560
+        "y": 220
+      tempMetlId: 5
+    Transpose Columns:
+      position:
+        x: 700
+        "y": 220
+      tempMetlId: 6
+    convert date:
+      position:
+        x: 830
+        "y": 220
+      tempMetlId: 7
+    Join:
+      position:
+        x: 970
+        "y": 150
+      tempMetlId: 8
