@@ -114,7 +114,7 @@ design:
       tempMetlId: 3
     S3 Load JSON - s3_src_customer_accounts:
       position:
-        x: 230
+        x: 280
         "y": 110
       tempMetlId: 4
   notes:
