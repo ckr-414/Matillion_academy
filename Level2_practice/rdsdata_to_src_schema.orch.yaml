@@ -6,7 +6,7 @@ pipeline:
       type: "start"
       transitions:
         unconditional:
-        - "Database Query"
+        - "Fixed Iterator"
         - "Creat table s3_src_customer_accounts"
         - "s3_src_orders"
       parameters:
@@ -21,13 +21,13 @@ pipeline:
         username: "greenwave_user"
         password: "rds_database_password"
         connectionOptions:
-        sqlQuery: "SELECT * FROM customers;"
+        sqlQuery: "SELECT * FROM ${pip_table_name};"
         type: "Standard"
         primaryKeys:
         warehouse1: "[Environment Default]"
         database: "[Environment Default]"
         schema: "[Environment Default]"
-        targetTable: "rds_src_customers"
+        targetTable: "rds_src_${pip_table_name}"
         stage1: "[Custom]"
         stagePlatform: "Snowflake Managed"
         loadOptions:
@@ -186,6 +186,42 @@ pipeline:
         forceLoad: "False"
       postProcessing:
         updateScalarVariables:
+    Fixed Iterator:
+      type: "fixed-iterator"
+      transitions:
+        success:
+        - "Print Variables"
+      iterationTarget: "Database Query"
+      parameters:
+        componentName: "Fixed Iterator"
+        concurrency: "Sequential"
+        variablesToIterate:
+        - "pip_table_name"
+        iterationValues:
+        - - "customers"
+        - - "order_items"
+        breakOnFailure: "No"
+      postProcessing:
+        updateScalarVariables:
+    Print Variables:
+      type: "print-variables"
+      parameters:
+        componentName: "Print Variables"
+        variablesToPrint:
+        - - "pip_table_name"
+        prefixText:
+        includeVariableName: "No"
+      postProcessing:
+        updateScalarVariables:
+  variables:
+    pip_table_name:
+      metadata:
+        type: "TEXT"
+        description: |
+          This variable stores the table name to iterate for creating tables
+        scope: "SHARED"
+        visibility: "PRIVATE"
+      defaultValue: ""
 design:
   components:
     Start:
@@ -196,7 +232,7 @@ design:
     Database Query:
       position:
         x: 120
-        "y": 0
+        "y": -10
       tempMetlId: 2
     Creat table s3_src_customer_accounts:
       position:
@@ -218,10 +254,20 @@ design:
         x: 280
         "y": 250
       tempMetlId: 6
+    Fixed Iterator:
+      position:
+        x: 120
+        "y": -10
+      tempMetlId: 7
+    Print Variables:
+      position:
+        x: 260
+        "y": -40
+      tempMetlId: 8
   notes:
     "1":
       position:
-        x: 250
+        x: 450
         "y": -70
       size:
         height: 148
