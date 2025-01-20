@@ -173,6 +173,7 @@ pipeline:
       sources:
       - "Add Month names"
       - "convert date"
+      - "UK holidays"
       parameters:
         componentName: "Join"
         mainTable: "Add Month names"
@@ -181,9 +182,14 @@ pipeline:
         - - "convert date"
           - "days"
           - "Left"
+        - - "UK holidays"
+          - "ukholidays"
+          - "Left"
         joinExpressions:
         - - "\"main\".\"calendar_date\"=\"days\".\"date\""
           - "main_Left_days"
+        - - "\"main\".\"calendar_date\"=\"ukholidays\".\"Date\""
+          - "main_Left_ukholidays"
         columnMappings:
         - - "main.sequence"
           - "sequence"
@@ -209,6 +215,78 @@ pipeline:
           - "month_name"
         - - "days.date_name"
           - "day_name"
+        - - "ukholidays.Holiday Name"
+          - "holiday_name"
+    calculate days in month:
+      type: "window-calculation"
+      sources:
+      - "Join"
+      parameters:
+        componentName: "calculate days in month"
+        includeInputColumns: "Yes"
+        partitionData:
+        - "calendar_year"
+        - "calendar_month"
+        orderingWithinPartitions:
+        - - "calendar_date"
+          - "Ascending"
+        functions:
+        - - "Count"
+          - "calendar_date"
+          - "days_in_month"
+        lowerBound: "unbounded preceding"
+        upperBound: "unbounded following"
+    tidy output:
+      type: "rename"
+      sources:
+      - "calculate days in month"
+      parameters:
+        componentName: "tidy output"
+        columnMapping:
+        - - "calendar_week"
+          - "calendar_week"
+        - - "calendar_date"
+          - "calendar_date"
+        - - "calendar_day"
+          - "calendar_day"
+        - - "relative_month"
+          - "relative_month"
+        - - "calendar_month"
+          - "calendar_month"
+        - - "relative_day"
+          - "relative_day"
+        - - "relative_year"
+          - "relative_year"
+        - - "calendar_year"
+          - "calendar_year"
+        - - "month_name"
+          - "month_name"
+        - - "day_name"
+          - "day_name"
+        - - "days_in_month"
+          - "days_in_month"
+        - - "holiday_name"
+          - "holiday_name"
+        includeInputColumns: "No"
+    dmn_date:
+      type: "rewrite-table"
+      sources:
+      - "tidy output"
+      parameters:
+        componentName: "dmn_date"
+        warehouse: "[Environment Default]"
+        database: "[Environment Default]"
+        schema: "${pro_dwh_schema_name}"
+        targetTable: "dmn_date"
+        orderBy:
+      postProcessing:
+        updateScalarVariables:
+    UK holidays:
+      type: "sql"
+      parameters:
+        componentName: "UK holidays"
+        query: "select \"Date\",\"Holiday Name\" from matillion_learning.db_src.\"\
+          excel_uk_holidays\""
   variables:
     pip_start_date:
       metadata:
@@ -264,6 +342,26 @@ design:
       tempMetlId: 7
     Join:
       position:
-        x: 970
-        "y": 150
+        x: 1000
+        "y": 70
       tempMetlId: 8
+    calculate days in month:
+      position:
+        x: 1120
+        "y": 70
+      tempMetlId: 9
+    tidy output:
+      position:
+        x: 1260
+        "y": 70
+      tempMetlId: 10
+    dmn_date:
+      position:
+        x: 1490
+        "y": 70
+      tempMetlId: 11
+    UK holidays:
+      position:
+        x: 900
+        "y": 320
+      tempMetlId: 12

@@ -1,0 +1,374 @@
+type: "orchestration"
+version: "1.0"
+pipeline:
+  components:
+    Start:
+      type: "start"
+      transitions:
+        unconditional:
+        - "Fixed Iterator"
+        - "Creat table s3_src_customer_accounts"
+        - "s3_src_orders"
+        - "Load uk holiday file"
+      parameters:
+        componentName: "Start"
+    Database Query:
+      type: "database-query"
+      parameters:
+        componentName: "Database Query"
+        basicAdvancedMode: "Advanced"
+        databaseType: "MariaDB"
+        connectionUrl: "jdbc:mariadb://mat-trn-src.co4vks4ks8wo.eu-west-1.rds.amazonaws.com:3306/greenwave"
+        username: "greenwave_user"
+        password: "rds_database_password"
+        connectionOptions:
+        sqlQuery: "SELECT * FROM ${pip_table_name};"
+        type: "Standard"
+        primaryKeys:
+        warehouse1: "[Environment Default]"
+        database: "[Environment Default]"
+        schema: "[Environment Default]"
+        targetTable: "rds_src_${pip_table_name}"
+        stage1: "[Custom]"
+        stagePlatform: "Snowflake Managed"
+        loadOptions:
+        sshTunnel:
+      postProcessing:
+        updateScalarVariables:
+    Creat table s3_src_customer_accounts:
+      type: "create-table"
+      transitions:
+        success:
+        - "S3 Load JSON - s3_src_customer_accounts"
+      parameters:
+        componentName: "Creat table s3_src_customer_accounts"
+        createReplace: "Create if not exists"
+        database: "[Environment Default]"
+        schema: "[Environment Default]"
+        newTableName: "s3_src_customer_accounts"
+        tableType: "Permanent"
+        columns:
+        - - "datavalue"
+          - "VARIANT"
+          - ""
+          - ""
+          - ""
+          - "No"
+          - "No"
+          - ""
+          - ""
+        defaultDdlCollation:
+        primaryKeys:
+        clusteringKeys:
+        dataRetentionTimeInDays:
+        comment:
+      postProcessing:
+        updateScalarVariables:
+    S3 Load JSON - s3_src_customer_accounts:
+      type: "s3-load"
+      transitions:
+        success:
+        - "And"
+      parameters:
+        componentName: "S3 Load JSON - s3_src_customer_accounts"
+        stage: "[Custom]"
+        authentication: "Credentials"
+        s3ObjectPrefix: "s3://public-online-mtln-training-s3-greenwave/"
+        pattern: "customer_accounts.json"
+        encryption: "None"
+        warehouse: "[Environment Default]"
+        database: "[Environment Default]"
+        schema: "[Environment Default]"
+        targetTable: "s3_src_customer_accounts"
+        loadColumns:
+        - "datavalue"
+        format: "[Custom]"
+        fileType: "JSON"
+        compression: "AUTO"
+        enableOctal: "False"
+        allowDuplicates: "False"
+        stripOuterArray: "False"
+        stripNullValues: "False"
+        ignoreUtf8Errors: "False"
+        nullIf1:
+        trimSpace1: "False"
+        onError: "Abort Statement"
+        sizeLimitB:
+        purgeFiles: "False"
+        matchByColumnName: "None"
+        truncateColumns: "False"
+        forceLoad: "False"
+      postProcessing:
+        updateScalarVariables:
+    s3_src_orders:
+      type: "create-table"
+      transitions:
+        success:
+        - "S3  Load CSV-S3_src_orders"
+      parameters:
+        componentName: "s3_src_orders"
+        createReplace: "Replace"
+        database: "[Environment Default]"
+        schema: "[Environment Default]"
+        newTableName: "s3_src_orders"
+        tableType: "Permanent"
+        columns:
+        - - "rid"
+          - "NUMBER"
+          - "5"
+          - "0"
+          - ""
+          - "No"
+          - "No"
+          - ""
+          - ""
+        - - "customer_rid"
+          - "NUMBER"
+          - "5"
+          - "0"
+          - ""
+          - "No"
+          - "No"
+          - ""
+          - ""
+        - - "order_date"
+          - "TIMESTAMP"
+          - ""
+          - ""
+          - ""
+          - "No"
+          - "No"
+          - ""
+          - ""
+        defaultDdlCollation:
+        primaryKeys:
+        clusteringKeys:
+        dataRetentionTimeInDays:
+        comment:
+      postProcessing:
+        updateScalarVariables:
+    S3  Load CSV-S3_src_orders:
+      type: "s3-load"
+      parameters:
+        componentName: "S3  Load CSV-S3_src_orders"
+        stage: "[Custom]"
+        authentication: "Credentials"
+        s3ObjectPrefix: "s3://public-online-mtln-training-s3-greenwave/"
+        pattern: "orders_s3.*"
+        encryption: "None"
+        warehouse: "[Environment Default]"
+        database: "[Environment Default]"
+        schema: "[Environment Default]"
+        targetTable: "s3_src_orders"
+        loadColumns:
+        - "rid"
+        - "customer_rid"
+        - "order_date"
+        format: "[Custom]"
+        fileType: "CSV"
+        compression: "AUTO"
+        recordDelimiter: "\\n"
+        fieldDelimiter: ","
+        skipHeader: "1"
+        skipBlankLines: "False"
+        dateFormat:
+        timeFormat:
+        timestampFormat:
+        escape:
+        escapeUnenclosedField:
+        trimSpace: "False"
+        fieldOptionallyEnclosed:
+        nullIf:
+        errorOnColumnCountMismatch: "False"
+        emptyFieldAsNull: "True"
+        replaceInvalidCharacters: "False"
+        encodingType:
+        onError: "Abort Statement"
+        sizeLimitB:
+        purgeFiles: "False"
+        truncateColumns: "False"
+        forceLoad: "False"
+      postProcessing:
+        updateScalarVariables:
+    Fixed Iterator:
+      type: "fixed-iterator"
+      transitions:
+        success:
+        - "Print Variables"
+      iterationTarget: "Database Query"
+      parameters:
+        componentName: "Fixed Iterator"
+        concurrency: "Sequential"
+        variablesToIterate:
+        - "pip_table_name"
+        iterationValues:
+        - - "customers"
+        - - "order_items"
+        breakOnFailure: "No"
+      postProcessing:
+        updateScalarVariables:
+    Print Variables:
+      type: "print-variables"
+      transitions:
+        success:
+        - "And"
+      parameters:
+        componentName: "Print Variables"
+        variablesToPrint:
+        - - "pip_table_name"
+        prefixText:
+        includeVariableName: "No"
+      postProcessing:
+        updateScalarVariables:
+    Load uk holiday file:
+      type: "excel-query"
+      parameters:
+        componentName: "Load uk holiday file"
+        basicAdvancedMode: "Basic"
+        storageType: "Amazon S3 Storage"
+        storageUrl: "s3://public-us-online-mtln-training-s3-greenwave/TrainingUKNationalHolidays.xlsx"
+        containsHeaderRow: "Yes"
+        cellRange:
+        connectionOptions:
+        dataSource: "UKHolidays"
+        dataSelection:
+        - "Date"
+        - "Holiday Name"
+        - "RowId"
+        dataSourceFilter:
+        combineFilters: "And"
+        limit:
+        type: "Standard"
+        primaryKeys:
+        warehouse: "[Environment Default]"
+        database: "[Environment Default]"
+        schema: "[Environment Default]"
+        targetTable: "excel_src_uk_holidays"
+        stage: "[Custom]"
+        stagePlatform: "Snowflake Managed"
+        loadOptions:
+        autoDebug: "Off"
+      postProcessing:
+        updateScalarVariables:
+    And:
+      type: "and"
+      transitions:
+        unconditional:
+        - "Run load_dmn_date"
+      parameters:
+        componentName: "And"
+      postProcessing:
+        updateScalarVariables:
+    Run load_dmn_date:
+      type: "run-transformation"
+      transitions:
+        success:
+        - "End Success"
+      parameters:
+        componentName: "Run load_dmn_date"
+        transformationJob: "Level3_practice/load_dmn_date.tran.yaml"
+        setScalarVariables:
+        setGridVariables:
+      postProcessing:
+        updateScalarVariables:
+    End Success:
+      type: "end-success"
+      parameters:
+        componentName: "End Success"
+      postProcessing:
+        updateScalarVariables:
+  variables:
+    pip_table_name:
+      metadata:
+        type: "TEXT"
+        description: |
+          This variable stores the table name to iterate for creating tables
+        scope: "SHARED"
+        visibility: "PRIVATE"
+      defaultValue: ""
+design:
+  components:
+    Start:
+      position:
+        x: 0
+        "y": 0
+      tempMetlId: 1
+    Database Query:
+      position:
+        x: 120
+        "y": -10
+      tempMetlId: 2
+    Creat table s3_src_customer_accounts:
+      position:
+        x: 110
+        "y": 110
+      tempMetlId: 3
+    S3 Load JSON - s3_src_customer_accounts:
+      position:
+        x: 280
+        "y": 110
+      tempMetlId: 4
+    s3_src_orders:
+      position:
+        x: 100
+        "y": 250
+      tempMetlId: 5
+    S3  Load CSV-S3_src_orders:
+      position:
+        x: 280
+        "y": 250
+      tempMetlId: 6
+    Fixed Iterator:
+      position:
+        x: 120
+        "y": -10
+      tempMetlId: 7
+    Print Variables:
+      position:
+        x: 260
+        "y": -40
+      tempMetlId: 8
+    Load uk holiday file:
+      position:
+        x: 100
+        "y": 350
+      tempMetlId: 9
+    And:
+      position:
+        x: 430
+        "y": 50
+      tempMetlId: 10
+    Run load_dmn_date:
+      position:
+        x: 560
+        "y": 50
+      tempMetlId: 11
+    End Success:
+      position:
+        x: 740
+        "y": 50
+      tempMetlId: 12
+  notes:
+    "1":
+      position:
+        x: 90
+        "y": -230
+      size:
+        height: 148
+        width: 300
+      theme: "white"
+      content: |-
+        Coping the customers data from Mariadb to snowflake.
+
+        In this when component runs every time table get create ot truncate and load the load.
+    "2":
+      position:
+        x: -270
+        "y": 120
+      size:
+        height: 128
+        width: 300
+      theme: "white"
+      content: |-
+        Create a table to load data from JSON file with table action REPLACE.
+        and loading data from S3 JSON file to s3_src_customer_accounts table
