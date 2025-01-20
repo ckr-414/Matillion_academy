@@ -1,0 +1,164 @@
+type: "orchestration"
+version: "1.0"
+pipeline:
+  components:
+    Start:
+      type: "start"
+      transitions:
+        unconditional:
+        - "Query Result To Scalar"
+        - "Query Result To Grid"
+      parameters:
+        componentName: "Start"
+    Query Result To Scalar:
+      type: "query-to-scalar"
+      transitions:
+        success:
+        - "Print Variables"
+      parameters:
+        componentName: "Query Result To Scalar"
+        mode: "Advanced"
+        query: "select distinct \"month_name\" from matillion_learning.db_dwh.\"dmn_date\"\
+          \ where \"month_name\" ='January'"
+        scalarVariableMapping:
+        - - "pip_scalar"
+          - "month_name"
+      postProcessing:
+        updateScalarVariables:
+    Print Variables:
+      type: "print-variables"
+      transitions:
+        success:
+        - "Remove From Grid"
+      parameters:
+        componentName: "Print Variables"
+        variablesToPrint:
+        - - "pip_scalar"
+        prefixText:
+        includeVariableName: "No"
+      postProcessing:
+        updateScalarVariables:
+    Append To Grid:
+      type: "append-to-grid"
+      transitions:
+        success:
+        - "Print Variables 2"
+      parameters:
+        componentName: "Append To Grid"
+        operation: "Append"
+        targetGridVariable: "pip_grid"
+        valuesGrid:
+        - - "patas"
+        - - "ravi"
+      postProcessing:
+        updateScalarVariables:
+    Query Result To Grid:
+      type: "query-to-grid"
+      transitions:
+        success:
+        - "Append To Grid"
+      parameters:
+        componentName: "Query Result To Grid"
+        mode: "Advanced"
+        gridVariable: "pip_grid"
+        gridVariableMapping:
+        - - "month_name"
+          - "Month_names"
+        query: "select distinct \"month_name\" from matillion_learning.db_dwh.\"dmn_date\""
+      postProcessing:
+        updateScalarVariables:
+    Print Variables 2:
+      type: "print-variables"
+      parameters:
+        componentName: "Print Variables 2"
+        variablesToPrint:
+        - - "pip_grid"
+        prefixText:
+        includeVariableName: "No"
+      postProcessing:
+        updateScalarVariables:
+    Remove From Grid:
+      type: "remove-from-grid"
+      transitions:
+        success:
+        - "Print Variables 3"
+      parameters:
+        componentName: "Remove From Grid"
+        targetGridVariable: "pip_grid"
+        operation: "Not In"
+        keyColumns:
+        - "Month_names"
+        valuesGrid:
+        - - "patas"
+      postProcessing:
+        updateScalarVariables:
+    Print Variables 3:
+      type: "print-variables"
+      parameters:
+        componentName: "Print Variables 3"
+        variablesToPrint:
+        - - "pip_grid"
+        prefixText:
+        includeVariableName: "No"
+      postProcessing:
+        updateScalarVariables:
+  variables:
+    pip_scalar:
+      metadata:
+        type: "TEXT"
+        description: ""
+        scope: "SHARED"
+        visibility: "PUBLIC"
+      defaultValue: ""
+    pip_grid:
+      metadata:
+        type: "GRID"
+        description: ""
+        scope: "SHARED"
+        visibility: "PUBLIC"
+        columns:
+          Month_names:
+            columnType: "TEXT"
+      defaultValue: []
+design:
+  components:
+    Start:
+      position:
+        x: 0
+        "y": 0
+      tempMetlId: 1
+    Query Result To Scalar:
+      position:
+        x: 110
+        "y": 0
+      tempMetlId: 2
+    Print Variables:
+      position:
+        x: 230
+        "y": 0
+      tempMetlId: 3
+    Append To Grid:
+      position:
+        x: 310
+        "y": 110
+      tempMetlId: 4
+    Query Result To Grid:
+      position:
+        x: 110
+        "y": 80
+      tempMetlId: 5
+    Print Variables 2:
+      position:
+        x: 430
+        "y": 110
+      tempMetlId: 6
+    Remove From Grid:
+      position:
+        x: 530
+        "y": 60
+      tempMetlId: 7
+    Print Variables 3:
+      position:
+        x: 670
+        "y": 70
+      tempMetlId: 8

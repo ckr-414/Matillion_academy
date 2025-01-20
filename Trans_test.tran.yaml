@@ -1,0 +1,16 @@
+type: "transformation"
+version: "1.0"
+pipeline:
+  components:
+    SQL:
+      type: "sql"
+      parameters:
+        componentName: "SQL"
+        query: "select distinct \"month_name\" from matillion_learning.db_dwh.\"dmn_date\""
+design:
+  components:
+    SQL:
+      position:
+        x: 870
+        "y": 280
+      tempMetlId: 1
